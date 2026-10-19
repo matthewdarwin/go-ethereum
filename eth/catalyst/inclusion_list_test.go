@@ -40,7 +40,11 @@ func bogotaTestChain(t *testing.T) (*core.Genesis, []*types.Block) {
 	cfg := genesis.Config
 	cfg.ShanghaiTime, cfg.CancunTime, cfg.PragueTime, cfg.OsakaTime = &at, &at, &at, &at
 	cfg.AmsterdamTime, cfg.BogotaTime = &at, &at
-	cfg.BlobScheduleConfig = params.DefaultBlobSchedule
+
+	// Bogota has its own blob schedule entry, add it to a copy of the shared one.
+	schedule := *params.DefaultBlobSchedule
+	schedule.Bogota = params.DefaultBogotaBlobConfig
+	cfg.BlobScheduleConfig = &schedule
 	return genesis, blocks
 }
 

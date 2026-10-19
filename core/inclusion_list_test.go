@@ -38,6 +38,11 @@ import (
 func newInclusionListTestEnv(extra types.GenesisAlloc) *balTestEnv {
 	env := newBALTestEnv(extra)
 	env.cfg.BogotaTime = new(uint64)
+
+	// Bogota has its own blob schedule entry, add it to a copy of the shared one.
+	schedule := *env.cfg.BlobScheduleConfig
+	schedule.Bogota = params.DefaultBogotaBlobConfig
+	env.cfg.BlobScheduleConfig = &schedule
 	return env
 }
 
