@@ -802,6 +802,7 @@ var Forks = map[string]*params.ChainConfig{
 			Prague: params.DefaultPragueBlobConfig,
 			BPO1:   params.DefaultBPO1BlobConfig,
 			BPO2:   params.DefaultBPO2BlobConfig,
+			Bogota: params.DefaultBogotaBlobConfig,
 		},
 	},
 	"AmsterdamToBogotaAtTime15k": {
@@ -834,6 +835,7 @@ var Forks = map[string]*params.ChainConfig{
 			Prague: params.DefaultPragueBlobConfig,
 			BPO1:   params.DefaultBPO1BlobConfig,
 			BPO2:   params.DefaultBPO2BlobConfig,
+			Bogota: params.DefaultBogotaBlobConfig,
 		},
 	},
 	"Verkle": {

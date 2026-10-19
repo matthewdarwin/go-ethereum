@@ -17,12 +17,14 @@
 package params
 
 import (
+	"encoding/json"
 	"math"
 	"math/big"
 	"reflect"
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/params/forks"
 	"github.com/stretchr/testify/require"
 )
 
@@ -154,4 +156,31 @@ func TestTimestampCompatError(t *testing.T) {
 
 	require.Equal(t, newTimestampCompatError(errWhat, newUint64(0), newUint64(1681338455)).Error(),
 		"mismatching Shanghai fork timestamp in database (have timestamp 0, want timestamp 1681338455, rewindto timestamp 0)")
+}
+
+// TestBogotaBlobSchedule checks that Bogota's own blob entry is read from the
+// genesis, takes over from the BPO chain, and is required once Bogota is set.
+func TestBogotaBlobSchedule(t *testing.T) {
+	var bsc BlobScheduleConfig
+	require.NoError(t, json.Unmarshal([]byte(`{"bogota": {"target": 12, "max": 18, "baseFeeUpdateFraction": 12018519}}`), &bsc))
+	require.Equal(t, DefaultBogotaBlobConfig, bsc.Bogota)
+
+	cfg := *MergedTestChainConfig
+	cfg.BPO1Time = newUint64(0)
+	cfg.BPO2Time = newUint64(0)
+	cfg.AmsterdamTime = newUint64(0)
+	cfg.BogotaTime = newUint64(0)
+	cfg.BlobScheduleConfig = &BlobScheduleConfig{
+		Cancun: DefaultCancunBlobConfig,
+		Prague: DefaultPragueBlobConfig,
+		BPO1:   DefaultBPO1BlobConfig,
+		BPO2:   DefaultBPO2BlobConfig,
+		Bogota: DefaultBogotaBlobConfig,
+	}
+	require.NoError(t, cfg.CheckConfigForkOrder())
+	require.Same(t, DefaultBPO2BlobConfig, cfg.BlobConfig(forks.Amsterdam))
+	require.Same(t, DefaultBogotaBlobConfig, cfg.BlobConfig(forks.Bogota))
+
+	cfg.BlobScheduleConfig.Bogota = nil
+	require.ErrorContains(t, cfg.CheckConfigForkOrder(), `missing entry for fork "bogota" in blobSchedule`)
 }

@@ -102,6 +102,7 @@ var (
 		BlobScheduleConfig: &BlobScheduleConfig{
 			Cancun: DefaultCancunBlobConfig,
 			Prague: DefaultPragueBlobConfig,
+			Bogota: DefaultBogotaBlobConfig,
 		},
 	}
 
@@ -271,6 +272,12 @@ var (
 		Target:         14,
 		Max:            21,
 		UpdateFraction: 13739630,
+	}
+	// DefaultBogotaBlobConfig is the default blob configuration for the Bogota fork.
+	DefaultBogotaBlobConfig = &BlobConfig{
+		Target:         12,
+		Max:            18,
+		UpdateFraction: 12018519,
 	}
 	// DefaultBlobSchedule is the latest configured blob schedule for Ethereum mainnet.
 	DefaultBlobSchedule = &BlobScheduleConfig{
@@ -564,7 +571,7 @@ func (c *ChainConfig) Description() string {
 		banner += fmt.Sprintf(" - Amsterdam:                   @%-10v\n", *c.AmsterdamTime)
 	}
 	if c.BogotaTime != nil {
-		banner += fmt.Sprintf(" - Bogota:                      @%-10v\n", *c.BogotaTime)
+		banner += fmt.Sprintf(" - Bogota:                      @%-10v blob: (%s)\n", *c.BogotaTime, c.BlobScheduleConfig.Bogota)
 	}
 	if c.UBTTime != nil {
 		banner += fmt.Sprintf(" - UBT:                         @%-10v\n", *c.UBTTime)
@@ -590,9 +597,10 @@ func (bc *BlobConfig) String() string {
 
 // BlobScheduleConfig determines target and max number of blobs allow per fork.
 //
-// From Prague onward, the blob schedule is updated only at BPO (Blob Parameter-Only)
-// forks. Named forks such as Osaka or Amsterdam inherit the most recently configured
-// BPO entry and must not declare their own BlobConfig.
+// From Prague onward, the blob schedule is updated at BPO (Blob Parameter-Only)
+// forks and at named forks that change it, such as Bogota (EIP-8198). Other named
+// forks such as Osaka or Amsterdam inherit the most recently configured entry and
+// must not declare their own BlobConfig.
 type BlobScheduleConfig struct {
 	Cancun *BlobConfig `json:"cancun,omitempty"`
 	Prague *BlobConfig `json:"prague,omitempty"`
@@ -601,6 +609,7 @@ type BlobScheduleConfig struct {
 	BPO3   *BlobConfig `json:"bpo3,omitempty"`
 	BPO4   *BlobConfig `json:"bpo4,omitempty"`
 	BPO5   *BlobConfig `json:"bpo5,omitempty"`
+	Bogota *BlobConfig `json:"bogota,omitempty"`
 }
 
 // IsHomestead returns whether num is either equal to the homestead block or greater.
@@ -888,6 +897,7 @@ func (c *ChainConfig) CheckConfigForkOrder() error {
 		{name: "bpo3", timestamp: c.BPO3Time, config: bsc.BPO3},
 		{name: "bpo4", timestamp: c.BPO4Time, config: bsc.BPO4},
 		{name: "bpo5", timestamp: c.BPO5Time, config: bsc.BPO5},
+		{name: "bogota", timestamp: c.BogotaTime, config: bsc.Bogota},
 	} {
 		if cur.config != nil {
 			if err := cur.config.validate(); err != nil {
@@ -1059,10 +1069,10 @@ func (c *ChainConfig) LatestFork(time uint64) forks.Fork {
 	}
 }
 
-// BlobConfig returns the blob config active at the provided fork. Since named
-// forks (Osaka, Amsterdam, ...) no longer carry their own blob schedule, the
-// lookup walks down from fork through the BPO chain to Prague/Cancun and returns
-// the first non-nil entry.
+// BlobConfig returns the blob config active at the provided fork. Since most named
+// forks (Osaka, Amsterdam, ...) don't carry their own blob schedule, the lookup
+// walks down from fork through Bogota and the BPO chain to Prague/Cancun and
+// returns the first non-nil entry.
 func (c *ChainConfig) BlobConfig(fork forks.Fork) *BlobConfig {
 	if c.BlobScheduleConfig == nil {
 		return nil
@@ -1072,6 +1082,7 @@ func (c *ChainConfig) BlobConfig(fork forks.Fork) *BlobConfig {
 		at  forks.Fork
 		cfg *BlobConfig
 	}{
+		{forks.Bogota, bsc.Bogota},
 		{forks.BPO5, bsc.BPO5},
 		{forks.BPO4, bsc.BPO4},
 		{forks.BPO3, bsc.BPO3},

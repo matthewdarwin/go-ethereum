@@ -227,3 +227,53 @@ func TestCalcExcessBlobGasEIP7918(t *testing.T) {
 		}
 	}
 }
+
+// TestBogotaBlobSchedule checks the blob parameters on both sides of the Bogota
+// fork, where EIP-8198 replaces the BPO2 schedule with 12/18.
+func TestBogotaBlobSchedule(t *testing.T) {
+	var (
+		zero   = uint64(0)
+		bogota = uint64(15_000)
+		config = &params.ChainConfig{
+			LondonBlock:   big.NewInt(0),
+			CancunTime:    &zero,
+			PragueTime:    &zero,
+			OsakaTime:     &zero,
+			BPO1Time:      &zero,
+			BPO2Time:      &zero,
+			AmsterdamTime: &zero,
+			BogotaTime:    &bogota,
+			BlobScheduleConfig: &params.BlobScheduleConfig{
+				Cancun: params.DefaultCancunBlobConfig,
+				Prague: params.DefaultPragueBlobConfig,
+				BPO1:   params.DefaultBPO1BlobConfig,
+				BPO2:   params.DefaultBPO2BlobConfig,
+				Bogota: params.DefaultBogotaBlobConfig,
+			},
+		}
+		parentExcess = uint64(10 * params.BlobTxBlobGasPerBlob)
+		parentUsed   = uint64(15 * params.BlobTxBlobGasPerBlob)
+		parent       = &types.Header{ExcessBlobGas: &parentExcess, BlobGasUsed: &parentUsed, BaseFee: big.NewInt(1)}
+		feeExcess    = uint64(100_000_000)
+	)
+	for _, tt := range []struct {
+		time     uint64
+		maxBlobs int
+		excess   uint64 // parent excess + used - target
+		blobFee  int64  // at a fixed excess, so only the update fraction differs
+	}{
+		{14_999, 21, 11 * params.BlobTxBlobGasPerBlob, 5209},
+		{15_000, 18, 13 * params.BlobTxBlobGasPerBlob, 4107},
+	} {
+		if have := MaxBlobsPerBlock(config, tt.time); have != tt.maxBlobs {
+			t.Errorf("time %d: max blobs %d, want %d", tt.time, have, tt.maxBlobs)
+		}
+		if have := CalcExcessBlobGas(config, parent, tt.time); have != tt.excess {
+			t.Errorf("time %d: excess blob gas %d, want %d", tt.time, have, tt.excess)
+		}
+		header := &types.Header{ExcessBlobGas: &feeExcess, Time: tt.time}
+		if have := CalcBlobFee(config, header); have.Int64() != tt.blobFee {
+			t.Errorf("time %d: blob fee %d, want %d", tt.time, have, tt.blobFee)
+		}
+	}
+}
